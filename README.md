@@ -29,6 +29,8 @@ erDiagram
         UUID id PK
         string name
         string timezone "IANA timezone"
+        timestamptz created_at
+        timestamptz deleted_at "nullable"
     }
     DOCTOR {
         UUID id PK
@@ -37,6 +39,7 @@ erDiagram
         string specialty
         boolean is_active
         timestamptz created_at
+        timestamptz deleted_at "nullable"
     }
     DOCTOR_WORKING_HOUR {
         UUID id PK
@@ -44,6 +47,8 @@ erDiagram
         smallint weekday "0-6"
         time start_time
         time end_time
+        timestamptz created_at
+        timestamptz deleted_at "nullable"
     }
     DOCTOR_TIME_OUT {
         UUID id PK
@@ -52,6 +57,7 @@ erDiagram
         timestamptz ends_at
         string reason "nullable"
         timestamptz created_at
+        timestamptz deleted_at "nullable"
     }
     PATIENT {
         UUID id PK
@@ -60,6 +66,7 @@ erDiagram
         string email
         string phone
         timestamptz created_at
+        timestamptz deleted_at "nullable"
     }
     APP_USER {
         UUID id PK
@@ -70,6 +77,7 @@ erDiagram
         UUID doctor_id FK "nullable"
         boolean is_active
         timestamptz created_at
+        timestamptz deleted_at "nullable"
     }
     APPOINTMENT {
         UUID id PK
@@ -81,6 +89,7 @@ erDiagram
         timestamptz created_at
         timestamptz updated_at
         timestamptz cancelled_at "nullable"
+        timestamptz deleted_at "nullable"
     }
 
     CLINIC ||--o{ DOCTOR : "1:N"
@@ -100,7 +109,7 @@ The database and API enforce these rules:
 |---|---|
 | **Valid references** | Foreign keys ensure each doctor, schedule, time-out, and appointment references existing records. |
 | **Account links match roles** | A patient account links to its patient record through `APP_USER.patient_id`. A doctor account links to its doctor record through `APP_USER.doctor_id`. Staff accounts have neither link. |
-| **Keep history** | Soft-delete referenced records. Deactivate doctor and user accounts instead of deleting them. |
+| **Keep history** | Use `deleted_at` to soft-delete records. Set `is_active` to false to deactivate doctor or user accounts. |
 | **Valid schedules and states** | Each schedule must end after it starts. A doctor's schedules for the same day cannot overlap. Back-to-back schedules are allowed. Reject schedule changes that conflict with booked appointments until those appointments are rescheduled. Appointment status is `booked`, `cancelled`, or `completed`. |
 | **One active booking per slot** | A partial unique index on `(doctor_id, start_at)` for booked appointments prevents duplicate bookings; conflicts return `409 Conflict`. |
 | **Cancelled slots can be reused** | Cancelled appointments remain as history and no longer reserve the slot. |
@@ -207,6 +216,12 @@ GitHub Actions tests pull requests targeting `main`. After a passing pull reques
 Start the application with Docker Compose. Alembic manages schema changes, and the test suite runs against PostgreSQL. FastAPI's interactive documentation is available at `/docs`.
 
 The test suite covers JWT authentication and patient/staff authorization, booking validation and concurrent conflicts, availability and DoctorTimeOut exclusion, cancellation and slot reuse, the two-hour cancellation restriction, the one-hour reschedule restriction, failed-reschedule preservation, and upcoming appointment ordering against PostgreSQL.
+
+### Optional demo data
+
+From `backend/`, apply the migrations, configure the local database, set `DEMO_SEED_PASSWORD` to a local-only value of at least 12 characters, and run `uv run python scripts/seed_demo.py`. The seed is explicit, not run at application startup or during deployment. It creates one clinic, five doctors with weekday hours, 40 fictional patients, one staff account, and sample appointment history. Stable IDs make reruns safe: existing records are left unchanged, and an email already attached to a different account stops the seed with an error.
+
+Demo logins are `patient01@example.test` through `patient40@example.test`, `doctor01@example.test` through `doctor05@example.test`, and `staff@example.test`. They share the supplied demo password; each account gets its own Argon2 password hash. These fictional accounts and the shared password are for local/demo use only, never production.
 
 ## Section 4 — AI reflection
 

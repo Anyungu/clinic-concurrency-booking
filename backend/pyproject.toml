@@ -1,0 +1,32 @@
+[project]
+name = "clinic-booking-api"
+version = "0.1.0"
+description = "Add your description here"
+authors = [
+    { name = "Anyungu Wanyungu", email = "anyungucw@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "alembic>=1.20.0",
+    "asyncpg>=0.32.0",
+    "fastapi[standard]>=0.148.0",
+    "pwdlib[argon2]>=0.3.1",
+    "pydantic-settings>=2.16.0",
+    "sqlalchemy[asyncio]>=2.1.5",
+    "sqlmodel>=0.0.48",
+]
+
+[project.scripts]
+clinic-booking-api = "clinic_booking_api:main"
+
+[build-system]
+requires = ["uv_build>=0.12.23,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.basedpyright]
+venvPath = "."
+venv = ".venv"
+extraPaths = ["src"]
+
+[tool.fastapi]
+entrypoint = "clinic_booking_api.main:app"
