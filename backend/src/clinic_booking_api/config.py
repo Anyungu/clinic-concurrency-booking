@@ -1,6 +1,6 @@
 from typing import ClassVar
 
-from pydantic import field_validator
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     )
 
     database_url: str
+    jwt_secret_key: SecretStr
 
     @field_validator("database_url")
     @classmethod
@@ -22,4 +23,4 @@ class Settings(BaseSettings):
         return url
 
 
-settings = Settings() # pyright: ignore[reportCallIssue]
+settings = Settings()  # pyright: ignore[reportCallIssue]
