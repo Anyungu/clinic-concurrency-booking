@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -9,6 +10,14 @@ from jwt import InvalidTokenError
 from clinic_booking_api.config import settings
 
 bearer_scheme = HTTPBearer(auto_error=False)
+
+
+def encode_token(claims: dict[str, str | datetime]) -> str:
+    return jwt.encode(  # pyright: ignore[reportUnknownMemberType]
+        claims,
+        settings.jwt_secret_key.get_secret_value(),
+        algorithm="HS256",
+    )
 
 
 def unauthorized() -> HTTPException:

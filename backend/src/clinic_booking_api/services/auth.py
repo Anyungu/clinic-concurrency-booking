@@ -2,14 +2,13 @@ from datetime import UTC, datetime, timedelta
 from typing import Literal
 from uuid import UUID
 
-import jwt
 from pwdlib import PasswordHash
 from pydantic import BaseModel
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from clinic_booking_api.config import settings
 from clinic_booking_api.models import AppUser
+from clinic_booking_api.utilities.auth import encode_token
 
 TOKEN_LIFETIME = timedelta(minutes=120)
 password_hash = PasswordHash.recommended()
@@ -46,13 +45,11 @@ async def authenticate_and_create_token(
 
 
 def create_access_token(user_id: UUID) -> str:
-    return jwt.encode(  # pyright: ignore[reportUnknownMemberType]
+    return encode_token(
         {
             "sub": str(user_id),
             "exp": datetime.now(UTC) + TOKEN_LIFETIME,
-        },
-        settings.jwt_secret_key.get_secret_value(),
-        algorithm="HS256",
+        }
     )
 
 
