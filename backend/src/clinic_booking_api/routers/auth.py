@@ -1,19 +1,23 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import col, select
+from pydantic import BaseModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from clinic_booking_api.auth import (
-    LoginRequest,
-    TokenResponse,
-    create_access_token,
-    password_hash,
-)
 from clinic_booking_api.db import get_session
-from clinic_booking_api.models import AppUser
+from clinic_booking_api.services.auth import authenticate_and_create_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: Literal["bearer"] = "bearer"
 
 
 @router.post("/token", response_model=TokenResponse)
@@ -21,19 +25,12 @@ async def login(
     credentials: LoginRequest,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> TokenResponse:
-    user = (
-        await session.exec(
-            select(AppUser).where(
-                AppUser.email == credentials.email.strip().lower(),
-                col(AppUser.deleted_at).is_(None),
-            )
-        )
-    ).first()
-    if (
-        user is None
-        or not user.is_active
-        or not password_hash.verify(credentials.password, user.password_hash)
-    ):
+    access_token = await authenticate_and_create_token(
+        session,
+        credentials.email,
+        credentials.password,
+    )
+    if access_token is None:
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password",
@@ -41,5 +38,5 @@ async def login(
         )
 
     return TokenResponse(
-        access_token=create_access_token(user.id),
+        access_token=access_token,
     )
