@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from clinic_booking_api.db import engine
-from clinic_booking_api.routers import health
+from clinic_booking_api.routers import auth, health
 
 
 @asynccontextmanager
@@ -17,6 +17,7 @@ async def lifespan(_app: FastAPI):
 
 api = APIRouter(prefix="/v1")
 api.include_router(health.router)
+api.include_router(auth.router)
 
 app = FastAPI(title="Clinic Booking API", lifespan=lifespan)
 app.add_middleware(
