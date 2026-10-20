@@ -4,6 +4,7 @@ from uuid import UUID
 
 from pwdlib import PasswordHash
 from pydantic import BaseModel
+from sqlalchemy.sql.elements import ColumnElement
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -12,6 +13,21 @@ from clinic_booking_api.utilities.auth import encode_token
 
 TOKEN_LIFETIME = timedelta(minutes=120)
 password_hash = PasswordHash.recommended()
+
+
+async def get_active_user(
+    session: AsyncSession,
+    condition: ColumnElement[bool],
+) -> AppUser | None:
+    return (
+        await session.exec(
+            select(AppUser).where(
+                condition,
+                col(AppUser.deleted_at).is_(None),
+                col(AppUser.is_active).is_(True),
+            )
+        )
+    ).first()
 
 
 class CurrentUser(BaseModel):
@@ -26,19 +42,11 @@ async def authenticate_and_create_token(
     email: str,
     password: str,
 ) -> str | None:
-    user = (
-        await session.exec(
-            select(AppUser).where(
-                AppUser.email == email.strip().lower(),
-                col(AppUser.deleted_at).is_(None),
-            )
-        )
-    ).first()
-    if (
-        user is None
-        or not user.is_active
-        or not password_hash.verify(password, user.password_hash)
-    ):
+    user = await get_active_user(
+        session,
+        col(AppUser.email) == email.strip().lower(),
+    )
+    if user is None or not password_hash.verify(password, user.password_hash):
         return None
 
     return create_access_token(user.id)
@@ -57,15 +65,8 @@ async def get_current_user(
     session: AsyncSession,
     user_id: UUID,
 ) -> CurrentUser | None:
-    user = (
-        await session.exec(
-            select(AppUser).where(
-                AppUser.id == user_id,
-                col(AppUser.deleted_at).is_(None),
-            )
-        )
-    ).first()
-    if user is None or not user.is_active:
+    user = await get_active_user(session, col(AppUser.id) == user_id)
+    if user is None:
         return None
 
     if (
